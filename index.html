@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة التداول الكمي - MK980</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Tahoma, sans-serif; background-color: #0f172a; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .card { background: #1e293b; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #38bdf8; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; box-sizing: border-box; }
+        input { background: #334155; color: #fff; }
+        button { background: #0ea5e9; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #0284c7; }
+        .hidden { display: none; }
+        .info-box { background: #334155; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center; }
+        .error { color: #f87171; text-align: center; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>منصة MK980 الكمية</h2>
+        
+        <!-- قسم تسجيل الدخول / إنشاء الحساب -->
+        <div id="auth-section">
+            <input type="email" id="email" placeholder="البريد الإلكتروني">
+            <input type="password" id="password" placeholder="كلمة المرور">
+            <button onclick="handleSignUp()">إنشاء حساب جديد</button>
+            <button onclick="handleSignIn()" style="background: #10b981;">تسجيل الدخول</button>
+            <p id="auth-error" class="error"></p>
+        </div>
+
+        <!-- لوحة تحكم العضو -->
+        <div id="dashboard-section" class="hidden">
+            <div class="info-box">
+                <p>الرصيد الحالي:</p>
+                <h3 id="user-balance">0.00 $</h3>
+            </div>
+            <div class="info-box">
+                <p>مستوى الحساب:</p>
+                <h3 id="user-vip">Normal</h3>
+            </div>
+            <button onclick="requestDeposit()" style="background: #f59e0b;">طلب إيداع لفتح VIP2</button>
+            <button onclick="handleLogout()" style="background: #ef4444; margin-top: 20px;">تسجيل الخروج</button>
+            <p id="deposit-msg" style="text-align: center; font-size: 14px; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <script>
+        // تم دمج بيانات الاتصال الخاصة بك هنا مباشرة
+        const SUPABASE_URL = 'https://vgjlqzakjijeuqpyppyc.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_r-kNwVlmJh1qfm9Aqut4WA_HaEp9eFk';
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function handleSignUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const { data, error } = await supabase.auth.signUp({ email, password });
+            if (error) {
+                document.getElementById('auth-error').innerText = error.message;
+            } else {
+                alert('تم إنشاء الحساب بنجاح! رصيدك الابتدائي هو 0. قم بتسجيل الدخول الآن.');
+            }
+        }
+
+        async function handleSignIn() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) {
+                document.getElementById('auth-error').innerText = error.message;
+            } else {
+                checkUserSession();
+            }
+        }
+
+        async function checkUserSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                document.getElementById('auth-section').classList.add('hidden');
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                loadUserData(session.user.id);
+            }
+        }
+
+        async function loadUserData(userId) {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+            
+            if (data) {
+                document.getElementById('user-balance').innerText = data.balance + ' $';
+                document.getElementById('user-vip').innerText = data.vip_level;
+            }
+        }
+
+        async function requestDeposit() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const amount = prompt("أدخل مبلغ الإيداع المطلوب لفتح VIP2 (مثلاً 100):");
+            if (!amount) return;
+
+            const { error } = await supabase
+                .from('deposits')
+                .insert([{ user_id: session.user.id, amount: parseFloat(amount), status: 'pending' }]);
+
+            if (error) {
+                document.getElementById('deposit-msg').innerText = 'حدث خطأ أثناء إرسال طلب الإيداع.';
+            } else {
+                document.getElementById('deposit-msg').innerText = 'تم إرسال طلب الإيداع بنجاح، بانتظار تأكيد الإدارة لتفعيل الرصيد و VIP2.';
+            }
+        }
+
+        async function handleLogout() {
+            await supabase.auth.signOut();
+            location.reload();
+        }
+
+        // التحقق من الجلسة عند فتح الصفحة
+        checkUserSession();
+    </script>
+</body>
+</html>
