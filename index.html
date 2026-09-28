@@ -8,24 +8,24 @@
     <style>
         * { box-sizing: border-box; }
         body { font-family: Tahoma, sans-serif; background-color: #0f172a; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .card { background: #1e293b; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h2 { text-align: center; color: #38bdf8; margin-top: 0; }
-        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; }
-        input { background: #334155; color: #fff; outline: none; }
+        .card { background: #1e293b; padding: 25px; border-radius: 14px; width: 100%; max-width: 420px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+        h2 { text-align: center; color: #38bdf8; margin-top: 0; margin-bottom: 20px; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 15px; }
+        input { background: #334155; color: #fff; outline: none; border: 1px solid #475569; }
+        input:focus { border-color: #38bdf8; }
         button { background: #0ea5e9; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #0284c7; }
+        button:hover { opacity: 0.9; }
         .btn-green { background: #10b981; }
-        .btn-green:hover { background: #059669; }
         .btn-orange { background: #f59e0b; }
-        .btn-orange:hover { background: #d97706; }
+        .btn-purple { background: #8b5cf6; }
         .btn-red { background: #ef4444; }
-        .btn-red:hover { background: #dc2626; }
         .hidden { display: none !important; }
-        .info-box { background: #334155; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center; }
-        .info-box p { margin: 0 0 5px 0; color: #94a3b8; }
-        .info-box h3 { margin: 0; font-size: 22px; color: #38bdf8; }
-        .error { color: #f87171; text-align: center; font-size: 14px; margin-top: 5px; }
-        .success { color: #34d399; text-align: center; font-size: 14px; margin-top: 5px; }
+        .info-box { background: #334155; padding: 12px; border-radius: 8px; margin: 8px 0; text-align: center; }
+        .info-box p { margin: 0 0 4px 0; color: #94a3b8; font-size: 13px; }
+        .info-box h3 { margin: 0; font-size: 20px; color: #38bdf8; }
+        .section-title { font-size: 16px; color: #38bdf8; margin-top: 15px; margin-bottom: 8px; border-bottom: 1px solid #334155; padding-bottom: 4px; }
+        .error { color: #f87171; text-align: center; font-size: 13px; margin-top: 5px; }
+        .success { color: #34d399; text-align: center; font-size: 13px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -33,7 +33,7 @@
     <div class="card">
         <h2>منصة MK980 الكمية</h2>
         
-        <!-- قسم تسجيل الدخول / إنشاء الحساب -->
+        <!-- 1. قسم تسجيل الدخول / إنشاء الحساب -->
         <div id="auth-section">
             <input type="email" id="email" placeholder="البريد الإلكتروني">
             <input type="password" id="password" placeholder="كلمة المرور">
@@ -42,24 +42,37 @@
             <p id="auth-error" class="error"></p>
         </div>
 
-        <!-- لوحة تحكم العضو -->
+        <!-- 2. لوحة تحكم العضو -->
         <div id="dashboard-section" class="hidden">
             <div class="info-box">
-                <p>الرصيد الحالي:</p>
-                <h3 id="user-balance">0.00 $</h3>
+                <p>الرصيد الحالي المتاح:</p>
+                <h3 id="user-balance">$ 0.00</h3>
             </div>
             <div class="info-box">
-                <p>مستوى الحساب:</p>
+                <p>مستوى العضوية:</p>
                 <h3 id="user-vip" style="color: #f59e0b;">Normal</h3>
             </div>
+
+            <!-- زر طلب الإيداع -->
             <button type="button" onclick="requestDeposit()" class="btn-orange">طلب إيداع لفتح VIP2</button>
-            <button type="button" onclick="handleLogout()" class="btn-red" style="margin-top: 15px;">تسجيل الخروج</button>
             <p id="deposit-msg"></p>
+
+            <!-- قسم المهام اليومية -->
+            <div class="section-title">المهام التداولية اليومية</div>
+            <button type="button" onclick="executeTask()" class="btn-purple">تنفيذ مهمة التداول اليومية (+5.00$)</button>
+            <p id="task-msg"></p>
+
+            <!-- قسم السحب -->
+            <div class="section-title">سحب الأرباح</div>
+            <button type="button" onclick="requestWithdrawal()" class="btn-green">طلب سحب الرصيد</button>
+            <p id="withdraw-msg"></p>
+
+            <!-- خروج -->
+            <button type="button" onclick="handleLogout()" class="btn-red" style="margin-top: 15px;">تسجيل الخروج</button>
         </div>
     </div>
 
     <script>
-        // إعدادات الاتصال
         const SUPABASE_URL = 'https://vgjlqzakjijeuqpyppyc.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_r-kNwVlmJh1qfm9Aqut4WA_HaEp9eFk';
         
@@ -72,7 +85,7 @@
             console.log("SupabaseInitError:", e);
         }
 
-        // إنشاء حساب جديد
+        // إنشاء حساب جديد (رصيد 0.00$)
         async function handleSignUp() {
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
@@ -84,15 +97,13 @@
                 return;
             }
 
-            // حفظ الحساب محلياً لضمان عمل الواجهة فوراً
             const userAccount = { email, password, balance: 0.00, vip_level: 'Normal' };
             localStorage.setItem('user_' + email, JSON.stringify(userAccount));
             localStorage.setItem('current_user', email);
 
-            // محاولة المزامنة مع السحابة
             if (clientSupabase) {
                 try {
-                    const { data, error } = await clientSupabase.auth.signUp({ email, password });
+                    const { data } = await clientSupabase.auth.signUp({ email, password });
                     if (data?.user) {
                         await clientSupabase.from('profiles').insert([{ id: data.user.id, balance: 0.00, vip_level: 'Normal' }]);
                     }
@@ -101,7 +112,7 @@
                 }
             }
 
-            alert('تم إنشاء الحساب بنجاح! رصيدك الابتدائي 0.00$. تم تسجيل دخولك تلقائياً.');
+            alert('تم إنشاء الحساب بنجاح! رصيدك الابتدائي $0.00. تم تسجيل دخولك بنجاح.');
             showDashboard(userAccount);
         }
 
@@ -127,7 +138,6 @@
                 }
             }
 
-            // محاولة تسجيل الدخول عبر Supabase
             if (clientSupabase) {
                 const { data, error } = await clientSupabase.auth.signInWithPassword({ email, password });
                 if (error) {
@@ -144,7 +154,7 @@
         function showDashboard(userObj) {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('dashboard-section').classList.remove('hidden');
-            document.getElementById('user-balance').innerText = (userObj.balance || 0).toFixed(2) + ' $';
+            document.getElementById('user-balance').innerText = '$ ' + (userObj.balance || 0).toFixed(2);
             document.getElementById('user-vip').innerText = userObj.vip_level || 'Normal';
         }
 
@@ -158,7 +168,7 @@
             }
         }
 
-        // طلب الإيداع
+        // طلب إيداع لفتح VIP2
         async function requestDeposit() {
             const currentUserEmail = localStorage.getItem('current_user');
             if (!currentUserEmail) return;
@@ -169,9 +179,8 @@
             if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
 
             msgBox.className = 'success';
-            msgBox.innerText = 'تم إرسال طلب الإيداع بقيمة ' + amount + '$ بنجاح! بانتظار موافقة الإدارة لتفعيل VIP2 والرصيد.';
+            msgBox.innerText = 'تم إرسال طلب الإيداع بقيمة $' + amount + ' بنجاح! بانتظار موافقة الإدارة لتفعيل VIP2 والرصيد.';
 
-            // المزامنة السحابية
             if (clientSupabase) {
                 const { data: { session } } = await clientSupabase.auth.getSession();
                 if (session) {
@@ -180,13 +189,60 @@
             }
         }
 
+        // تنفيذ مهمة يومية
+        function executeTask() {
+            const currentUserEmail = localStorage.getItem('current_user');
+            if (!currentUserEmail) return;
+
+            const localData = JSON.parse(localStorage.getItem('user_' + currentUserEmail));
+            const msgBox = document.getElementById('task-msg');
+
+            if (localData.vip_level !== 'VIP 2') {
+                msgBox.className = 'error';
+                msgBox.innerText = 'عذراً، يجب تفعيل مستوى VIP 2 أولاً لتنفيذ المهام اليومية.';
+                return;
+            }
+
+            // إضافة أرباح المهمة
+            localData.balance += 5.00;
+            localStorage.setItem('user_' + currentUserEmail, JSON.stringify(localData));
+            showDashboard(localData);
+
+            msgBox.className = 'success';
+            msgBox.innerText = 'تم تنفيذ المهمة اليومية بنجاح وإضافة +5.00$ إلى رصيدك!';
+        }
+
+        // طلب سحب الأرباح
+        function requestWithdrawal() {
+            const currentUserEmail = localStorage.getItem('current_user');
+            if (!currentUserEmail) return;
+
+            const localData = JSON.parse(localStorage.getItem('user_' + currentUserEmail));
+            const msgBox = document.getElementById('withdraw-msg');
+
+            const amount = prompt("أدخل المبلغ المراد سحبه (الرصيد المتاح: $" + localData.balance.toFixed(2) + "):");
+            if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
+
+            if (parseFloat(amount) > localData.balance) {
+                msgBox.className = 'error';
+                msgBox.innerText = 'عذراً، الرصيد غير كافٍ لإجراء عملية السحب.';
+                return;
+            }
+
+            localData.balance -= parseFloat(amount);
+            localStorage.setItem('user_' + currentUserEmail, JSON.stringify(localData));
+            showDashboard(localData);
+
+            msgBox.className = 'success';
+            msgBox.innerText = 'تم تقديم طلب سحب بقيمة $' + amount + ' بنجاح!';
+        }
+
         function handleLogout() {
             localStorage.removeItem('current_user');
             if (clientSupabase) clientSupabase.auth.signOut();
             location.reload();
         }
 
-        // التثبت عند فتح الصفحة
         window.onload = function() {
             const loggedEmail = localStorage.getItem('current_user');
             if (loggedEmail) {
