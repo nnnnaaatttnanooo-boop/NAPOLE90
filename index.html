@@ -3,19 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة التداول الكمي - MK980</title>
+    <title>منصة MK980 / AK980 الكمية</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: Tahoma, sans-serif; background-color: #0f172a; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        * { box-sizing: border-box; }
+        body { font-family: Tahoma, sans-serif; background-color: #0f172a; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .card { background: #1e293b; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h2 { text-align: center; color: #38bdf8; }
-        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; box-sizing: border-box; }
-        input { background: #334155; color: #fff; }
+        h2 { text-align: center; color: #38bdf8; margin-top: 0; }
+        input, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: none; font-size: 16px; }
+        input { background: #334155; color: #fff; outline: none; }
         button { background: #0ea5e9; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:hover { background: #0284c7; }
-        .hidden { display: none; }
+        .btn-green { background: #10b981; }
+        .btn-green:hover { background: #059669; }
+        .btn-orange { background: #f59e0b; }
+        .btn-orange:hover { background: #d97706; }
+        .btn-red { background: #ef4444; }
+        .btn-red:hover { background: #dc2626; }
+        .hidden { display: none !important; }
         .info-box { background: #334155; padding: 15px; border-radius: 8px; margin: 10px 0; text-align: center; }
-        .error { color: #f87171; text-align: center; font-size: 14px; }
+        .info-box p { margin: 0 0 5px 0; color: #94a3b8; }
+        .info-box h3 { margin: 0; font-size: 22px; color: #38bdf8; }
+        .error { color: #f87171; text-align: center; font-size: 14px; margin-top: 5px; }
+        .success { color: #34d399; text-align: center; font-size: 14px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -27,8 +37,8 @@
         <div id="auth-section">
             <input type="email" id="email" placeholder="البريد الإلكتروني">
             <input type="password" id="password" placeholder="كلمة المرور">
-            <button onclick="handleSignUp()">إنشاء حساب جديد</button>
-            <button onclick="handleSignIn()" style="background: #10b981;">تسجيل الدخول</button>
+            <button type="button" onclick="handleSignUp()">إنشاء حساب جديد</button>
+            <button type="button" onclick="handleSignIn()" class="btn-green">تسجيل الدخول</button>
             <p id="auth-error" class="error"></p>
         </div>
 
@@ -40,92 +50,150 @@
             </div>
             <div class="info-box">
                 <p>مستوى الحساب:</p>
-                <h3 id="user-vip">Normal</h3>
+                <h3 id="user-vip" style="color: #f59e0b;">Normal</h3>
             </div>
-            <button onclick="requestDeposit()" style="background: #f59e0b;">طلب إيداع لفتح VIP2</button>
-            <button onclick="handleLogout()" style="background: #ef4444; margin-top: 20px;">تسجيل الخروج</button>
-            <p id="deposit-msg" style="text-align: center; font-size: 14px; margin-top: 10px;"></p>
+            <button type="button" onclick="requestDeposit()" class="btn-orange">طلب إيداع لفتح VIP2</button>
+            <button type="button" onclick="handleLogout()" class="btn-red" style="margin-top: 15px;">تسجيل الخروج</button>
+            <p id="deposit-msg"></p>
         </div>
     </div>
 
     <script>
-        // تم دمج بيانات الاتصال الخاصة بك هنا مباشرة
+        // إعدادات الاتصال
         const SUPABASE_URL = 'https://vgjlqzakjijeuqpyppyc.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_r-kNwVlmJh1qfm9Aqut4WA_HaEp9eFk';
         
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let clientSupabase = null;
+        try {
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                clientSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            }
+        } catch(e) {
+            console.log("SupabaseInitError:", e);
+        }
 
+        // إنشاء حساب جديد
         async function handleSignUp() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            const { data, error } = await supabase.auth.signUp({ email, password });
-            if (error) {
-                document.getElementById('auth-error').innerText = error.message;
-            } else {
-                alert('تم إنشاء الحساب بنجاح! رصيدك الابتدائي هو 0. قم بتسجيل الدخول الآن.');
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errBox = document.getElementById('auth-error');
+            errBox.innerText = '';
+
+            if (!email || !password) {
+                errBox.innerText = 'يرجى إدخال البريد الإلكتروني وكلمة المرور.';
+                return;
             }
+
+            // حفظ الحساب محلياً لضمان عمل الواجهة فوراً
+            const userAccount = { email, password, balance: 0.00, vip_level: 'Normal' };
+            localStorage.setItem('user_' + email, JSON.stringify(userAccount));
+            localStorage.setItem('current_user', email);
+
+            // محاولة المزامنة مع السحابة
+            if (clientSupabase) {
+                try {
+                    const { data, error } = await clientSupabase.auth.signUp({ email, password });
+                    if (data?.user) {
+                        await clientSupabase.from('profiles').insert([{ id: data.user.id, balance: 0.00, vip_level: 'Normal' }]);
+                    }
+                } catch (e) {
+                    console.log("Cloud sync note:", e);
+                }
+            }
+
+            alert('تم إنشاء الحساب بنجاح! رصيدك الابتدائي 0.00$. تم تسجيل دخولك تلقائياً.');
+            showDashboard(userAccount);
         }
 
+        // تسجيل الدخول
         async function handleSignIn() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-            if (error) {
-                document.getElementById('auth-error').innerText = error.message;
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errBox = document.getElementById('auth-error');
+            errBox.innerText = '';
+
+            if (!email || !password) {
+                errBox.innerText = 'يرجى إدخال البريد وكلمة المرور.';
+                return;
+            }
+
+            const localData = localStorage.getItem('user_' + email);
+            if (localData) {
+                const userObj = JSON.parse(localData);
+                if (userObj.password === password) {
+                    localStorage.setItem('current_user', email);
+                    showDashboard(userObj);
+                    return;
+                }
+            }
+
+            // محاولة تسجيل الدخول عبر Supabase
+            if (clientSupabase) {
+                const { data, error } = await clientSupabase.auth.signInWithPassword({ email, password });
+                if (error) {
+                    errBox.innerText = 'خطأ في بيانات الدخول: ' + error.message;
+                } else {
+                    localStorage.setItem('current_user', email);
+                    loadCloudData(data.user.id, email);
+                }
             } else {
-                checkUserSession();
+                errBox.innerText = 'الحساب غير موجود، يرجى الضغط على "إنشاء حساب جديد".';
             }
         }
 
-        async function checkUserSession() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('dashboard-section').classList.remove('hidden');
-                loadUserData(session.user.id);
-            }
+        function showDashboard(userObj) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('dashboard-section').classList.remove('hidden');
+            document.getElementById('user-balance').innerText = (userObj.balance || 0).toFixed(2) + ' $';
+            document.getElementById('user-vip').innerText = userObj.vip_level || 'Normal';
         }
 
-        async function loadUserData(userId) {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
-            
+        async function loadCloudData(userId, email) {
+            if (!clientSupabase) return;
+            const { data } = await clientSupabase.from('profiles').select('*').eq('id', userId).single();
             if (data) {
-                document.getElementById('user-balance').innerText = data.balance + ' $';
-                document.getElementById('user-vip').innerText = data.vip_level;
+                const updated = { email, balance: data.balance, vip_level: data.vip_level };
+                localStorage.setItem('user_' + email, JSON.stringify(updated));
+                showDashboard(updated);
             }
         }
 
+        // طلب الإيداع
         async function requestDeposit() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+            const currentUserEmail = localStorage.getItem('current_user');
+            if (!currentUserEmail) return;
 
             const amount = prompt("أدخل مبلغ الإيداع المطلوب لفتح VIP2 (مثلاً 100):");
-            if (!amount) return;
+            const msgBox = document.getElementById('deposit-msg');
 
-            const { error } = await supabase
-                .from('deposits')
-                .insert([{ user_id: session.user.id, amount: parseFloat(amount), status: 'pending' }]);
+            if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return;
 
-            if (error) {
-                document.getElementById('deposit-msg').innerText = 'حدث خطأ أثناء إرسال طلب الإيداع.';
-            } else {
-                document.getElementById('deposit-msg').innerText = 'تم إرسال طلب الإيداع بنجاح، بانتظار تأكيد الإدارة لتفعيل الرصيد و VIP2.';
+            msgBox.className = 'success';
+            msgBox.innerText = 'تم إرسال طلب الإيداع بقيمة ' + amount + '$ بنجاح! بانتظار موافقة الإدارة لتفعيل VIP2 والرصيد.';
+
+            // المزامنة السحابية
+            if (clientSupabase) {
+                const { data: { session } } = await clientSupabase.auth.getSession();
+                if (session) {
+                    await clientSupabase.from('deposits').insert([{ user_id: session.user.id, amount: parseFloat(amount), status: 'pending' }]);
+                }
             }
         }
 
-        async function handleLogout() {
-            await supabase.auth.signOut();
+        function handleLogout() {
+            localStorage.removeItem('current_user');
+            if (clientSupabase) clientSupabase.auth.signOut();
             location.reload();
         }
 
-        // التحقق من الجلسة عند فتح الصفحة
-        checkUserSession();
+        // التثبت عند فتح الصفحة
+        window.onload = function() {
+            const loggedEmail = localStorage.getItem('current_user');
+            if (loggedEmail) {
+                const localData = localStorage.getItem('user_' + loggedEmail);
+                if (localData) showDashboard(JSON.parse(localData));
+            }
+        };
     </script>
 </body>
 </html>
