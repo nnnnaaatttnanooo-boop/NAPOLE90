@@ -605,22 +605,6 @@
                     </div>
                 </div>
 
-                <!-- زر تحميل التطبيق المضاف حديثاً -->
-                <div class="card" style="text-align: center; background: linear-gradient(135deg, #121824, #1a2332);">
-                    <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 8px; color: var(--accent);">
-                        <i class="fas fa-mobile-screen-button"></i> تطبيق المنصة للأندرويد
-                    </div>
-                    <p style="font-size: 0.75rem; color: var(--text-sec); margin-bottom: 12px;">قم بتحميل تطبيق المنصة على هاتفك للوصول السريع وبدون متصفح.</p>
-                    
-                    <a href="app-release.apk" class="btn btn-primary btn-block" download style="text-decoration: none; margin-bottom: 8px;">
-                        <i class="fas fa-download"></i> تحميل تطبيق المنصة (APK)
-                    </a>
-                    
-                    <button id="installAppBtn" class="btn btn-success btn-block hidden" style="background-color: #0e8cb8;">
-                        <i class="fas fa-plus-circle"></i> تثبيت التطبيق على الشاشة الرئيسية
-                    </button>
-                </div>
-
                 <div style="margin-top: 20px;">
                     <button class="btn btn-danger btn-block" onclick="logout()">
                         <i class="fas fa-sign-out-alt"></i> تسجيل الخروج من الحساب
@@ -804,27 +788,6 @@
         let currentSelectedDepNetwork = 'TRC20';
         let currentSelectedWdNetwork = 'TRC20';
         let timerInterval = null;
-
-        let deferredPrompt;
-        const installBtn = document.getElementById('installAppBtn');
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            if(installBtn) installBtn.classList.remove('hidden');
-        });
-
-        if(installBtn) {
-            installBtn.addEventListener('click', () => {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult) => {
-                        deferredPrompt = null;
-                        installBtn.classList.add('hidden');
-                    });
-                }
-            });
-        }
 
         const networkAddresses = {
             'TRC20': 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb',
