@@ -466,7 +466,7 @@
                             <div class="vip-stat-item">مدة الباقة: <span>30 يوم</span></div>
                         </div>
                         <div style="font-size: 0.75rem; color: var(--text-sec); margin-top: 2px;">إجمالي أرباح 30 يوم: <span class="text-accent">~90.00$</span></div>
-                        <button class="btn btn-primary btn-block" style="padding: 8px; font-size: 0.8rem; margin-top: 5px;" onclick="upgradeVip(1, 10)">ترقية المستوى</button>
+                        <button class="btn btn-primary btn-block" style="padding: 8px; font-size: 0.8rem; margin-top: 5px;" onclick="upgradeVip(1, 15)">ترقية المستوى</button>
                     </div>
 
                     <div class="vip-tier-box" id="vipBox2">
@@ -628,13 +628,13 @@
     <div id="adminPanelModal" class="modal-overlay">
         <div class="modal-content card" style="max-width: 450px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-                <h4 class="text-accent"><i class="fas fa-user-shield"></i> لوحة التحكم الإدارية (مباشر)</h4>
+                <h4 class="text-accent"><i class="fas fa-user-shield"></i> لوحة التحكم الإدارية</h4>
                 <i class="fas fa-times" style="cursor: pointer; color: var(--text-sec)" onclick="closeModal('adminPanelModal')"></i>
             </div>
             
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <p style="font-size: 0.75rem; color: var(--text-sec);">طلبات الإيداع المعلقة:</p>
-                <button class="btn btn-primary" style="padding: 2px 8px; font-size: 0.65rem;" onclick="loadAdminPanelData()"><i class="fas fa-sync-alt"></i> تحديث</button>
+                <button class="btn btn-primary" style="padding: 2px 8px; font-size: 0.65rem;" onclick="openAdminPanel()"><i class="fas fa-sync-alt"></i> تحديث</button>
             </div>
             <div id="adminDepositsList" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;"></div>
 
@@ -766,7 +766,7 @@
                 <h4>رسائل النظام</h4>
                 <i class="fas fa-times" style="cursor: pointer; color: var(--text-sec)" onclick="closeModal('systemMsgsModal')"></i>
             </div>
-            <p style="font-size: 0.8rem; color: var(--text-sec);">أهلاً بك في منصة NAPOLE90 للتعدين المحدثة مع الربط السحابي المباشر.</p>
+            <p style="font-size: 0.8rem; color: var(--text-sec);">أهلاً بك في منصة NAPOLE90 للتعدين  المحدثة.</p>
         </div>
     </div>
 
@@ -781,21 +781,10 @@
         </div>
     </div>
 
-    <!-- Firebase Realtime Cloud Core Engine -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, get, update, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-        const firebaseConfig = {
-            databaseURL: "https://napoleon90-mining-default-rtdb.firebaseio.com"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
+    <script>
         const ADMIN_EMAIL = 'nnnnaaatttnanooo@gmail.com';
+        let users = JSON.parse(localStorage.getItem('quant_users')) || {};
         let currentUserEmail = localStorage.getItem('quant_current_user') || null;
-        let currentUserData = null;
         let currentSelectedDepNetwork = 'TRC20';
         let currentSelectedWdNetwork = 'TRC20';
         let timerInterval = null;
@@ -808,10 +797,6 @@
 
         const vipRates = { 1: 0.20, 2: 0.216, 3: 0.23, 4: 0.245, 5: 0.26, 6: 0.28, 7: 0.30 };
 
-        function sanitizeEmail(email) {
-            return email.replace(/[.#$\[\]]/g, "_");
-        }
-
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const refCode = urlParams.get('ref');
@@ -819,9 +804,29 @@
                 localStorage.setItem('quant_register_ref', refCode);
             }
 
-            if (currentUserEmail) {
-                listenToUser(currentUserEmail);
+            const savedUser = localStorage.getItem('quant_current_user');
+            
+            if (savedUser && users[savedUser]) {
+                currentUserEmail = savedUser;
+                showAppScreen();
+            } else if (savedUser && !users[savedUser]) {
+                users[savedUser] = {
+                    email: savedUser,
+                    password: '123',
+                    balance: 0.0,
+                    profit: 0.0,
+                    recharge: 0.0,
+                    lastQuantTime: 0,
+                    vip: 1,
+                    refCode: "MK" + Math.floor(100000 + Math.random() * 900000),
+                    refLink: "",
+                    invitedBy: null
+                };
+                localStorage.setItem('quant_users', JSON.stringify(users));
+                currentUserEmail = savedUser;
+                showAppScreen();
             } else {
+                currentUserEmail = null;
                 document.getElementById('authScreen').classList.remove('hidden');
                 document.getElementById('appScreen').classList.add('hidden');
                 document.getElementById('bottomNav').classList.add('hidden');
@@ -829,100 +834,53 @@
             startLiveCryptoPrices();
         };
 
-        function listenToUser(email) {
-            const cleanKey = sanitizeEmail(email);
-            const userRef = ref(db, 'users/' + cleanKey);
-            onValue(userRef, (snapshot) => {
-                const val = snapshot.val();
-                if (val) {
-                    currentUserData = val;
-                    showAppScreen();
-                } else {
-                    const newUser = {
-                        email: email,
-                        password: '123',
-                        balance: 0.0,
-                        profit: 0.0,
-                        recharge: 0.0,
-                        lastQuantTime: 0,
-                        vip: 1,
-                        refCode: "MK" + Math.floor(100000 + Math.random() * 900000),
-                        refLink: "",
-                        invitedBy: null
-                    };
-                    set(userRef, newUser).then(() => {
-                        currentUserData = newUser;
-                        showAppScreen();
-                    });
-                }
-            });
-        }
-
-        window.toggleAuthMode = function() {
+        function toggleAuthMode() {
             document.getElementById('loginForm').classList.toggle('hidden');
             document.getElementById('registerForm').classList.toggle('hidden');
-        };
+        }
 
-        window.register = function() {
+        function register() {
             const email = document.getElementById('regEmail').value.trim().toLowerCase();
             const password = document.getElementById('regPassword').value.trim();
 
             if (!email || !password) { alert('يرجى ملء الحقول'); return; }
+            if (users[email]) { alert('البريد مسجل بالفعل'); return; }
 
-            const cleanKey = sanitizeEmail(email);
-            const userRef = ref(db, 'users/' + cleanKey);
+            const userCode = "MK" + Math.floor(100000 + Math.random() * 900000);
+            const invitedBy = localStorage.getItem('quant_register_ref') || null;
+
+            users[email] = {
+                email: email,
+                password: password,
+                balance: 0.0,
+                profit: 0.0,
+                recharge: 0.0,
+                lastQuantTime: 0,
+                vip: 1,
+                refCode: userCode,
+                refLink: "",
+                invitedBy: invitedBy
+            };
             
-            get(userRef).then((snapshot) => {
-                if (snapshot.exists()) {
-                    alert('البريد مسجل بالفعل');
-                } else {
-                    const userCode = "MK" + Math.floor(100000 + Math.random() * 900000);
-                    const invitedBy = localStorage.getItem('quant_register_ref') || null;
+            localStorage.setItem('quant_users', JSON.stringify(users));
+            localStorage.removeItem('quant_register_ref');
+            
+            currentUserEmail = email;
+            localStorage.setItem('quant_current_user', currentUserEmail);
+            showAppScreen();
+        }
 
-                    const newUser = {
-                        email: email,
-                        password: password,
-                        balance: 0.0,
-                        profit: 0.0,
-                        recharge: 0.0,
-                        lastQuantTime: 0,
-                        vip: 1,
-                        refCode: userCode,
-                        refLink: "",
-                        invitedBy: invitedBy
-                    };
-
-                    set(userRef, newUser).then(() => {
-                        localStorage.removeItem('quant_register_ref');
-                        currentUserEmail = email;
-                        localStorage.setItem('quant_current_user', currentUserEmail);
-                        listenToUser(currentUserEmail);
-                    });
-                }
-            });
-        };
-
-        window.login = function() {
+        function login() {
             const email = document.getElementById('loginEmail').value.trim().toLowerCase();
             const password = document.getElementById('loginPassword').value.trim();
 
-            if (!email || !password) { alert('يرجى كتابة البريد وكلمة المرور'); return; }
-
-            const cleanKey = sanitizeEmail(email);
-            const userRef = ref(db, 'users/' + cleanKey);
-
-            get(userRef).then((snapshot) => {
-                if (snapshot.exists()) {
-                    const user = snapshot.val();
-                    if (user.password === password) {
-                        currentUserEmail = email;
-                        localStorage.setItem('quant_current_user', currentUserEmail);
-                        listenToUser(currentUserEmail);
-                    } else {
-                        alert('كلمة المرور غير صحيحة');
-                    }
-                } else {
-                    const newUser = {
+            if (users[email] && users[email].password === password) {
+                currentUserEmail = email;
+                localStorage.setItem('quant_current_user', currentUserEmail);
+                showAppScreen();
+            } else {
+                if (!users[email] && email.includes('@')) {
+                    users[email] = {
                         email: email,
                         password: password,
                         balance: 0.0,
@@ -934,69 +892,75 @@
                         refLink: "",
                         invitedBy: null
                     };
-                    set(userRef, newUser).then(() => {
-                        currentUserEmail = email;
-                        localStorage.setItem('quant_current_user', currentUserEmail);
-                        listenToUser(currentUserEmail);
-                    });
+                    localStorage.setItem('quant_users', JSON.stringify(users));
+                    currentUserEmail = email;
+                    localStorage.setItem('quant_current_user', currentUserEmail);
+                    showAppScreen();
+                } else {
+                    alert('بيانات الدخول غير صحيحة');
                 }
-            });
-        };
+            }
+        }
 
-        window.logout = function() {
+        function logout() {
             currentUserEmail = null;
             localStorage.removeItem('quant_current_user');
             location.reload();
-        };
+        }
 
         function showAppScreen() {
+            users = JSON.parse(localStorage.getItem('quant_users')) || users;
+
             document.getElementById('authScreen').classList.add('hidden');
             document.getElementById('appScreen').classList.remove('hidden');
             document.getElementById('bottomNav').classList.remove('hidden');
             
-            const user = currentUserData;
+            const user = users[currentUserEmail];
             if (!user) return;
 
             if (user.email === ADMIN_EMAIL) {
                 document.getElementById('adminControlBtn').style.display = 'inline-flex';
-                listenToAdminRealtime();
             } else {
                 document.getElementById('adminControlBtn').style.display = 'none';
             }
 
-            const balance = Number(user.balance || 0);
-            const profit = Number(user.profit || 0);
-            const recharge = Number(user.recharge || 0);
-            const total = balance + profit;
+            if (user.balance === undefined) user.balance = 0.0;
+            if (user.profit === undefined) user.profit = 0.0;
+            if (user.recharge === undefined) user.recharge = 0.0;
+            if (user.lastQuantTime === undefined) user.lastQuantTime = 0;
+            if (user.vip === undefined) user.vip = 1;
+            if (!user.refCode) user.refCode = "MK" + Math.floor(100000 + Math.random() * 900000);
 
             const currentDomain = window.location.origin + window.location.pathname;
-            user.refLink = currentDomain + "?ref=" + (user.refCode || '');
+            user.refLink = currentDomain + "?ref=" + user.refCode;
+
+            const total = user.balance + user.profit;
 
             document.getElementById('userDisplayEmail').innerText = user.email;
-            document.getElementById('userVipBadge').innerText = "VIP " + (user.vip || 1);
+            document.getElementById('userVipBadge').innerText = "VIP " + user.vip;
             
             document.getElementById('totalAssets').innerText = total.toFixed(2) + " USDT";
-            document.getElementById('quantAccount').innerText = balance.toFixed(2) + " USDT";
-            document.getElementById('profitAssets').innerText = profit.toFixed(2) + " USDT";
-            document.getElementById('rechargeAmount').innerText = recharge.toFixed(2) + " USDT";
-            document.getElementById('modalWithdrawBalance').innerText = balance.toFixed(2) + " USDT";
-            document.getElementById('recordRecharge').innerText = "+" + recharge.toFixed(2) + " USDT";
-            document.getElementById('recordProfit').innerText = profit.toFixed(2) + " USDT";
+            document.getElementById('quantAccount').innerText = user.balance.toFixed(2) + " USDT";
+            document.getElementById('profitAssets').innerText = user.profit.toFixed(2) + " USDT";
+            document.getElementById('rechargeAmount').innerText = user.recharge.toFixed(2) + " USDT";
+            document.getElementById('modalWithdrawBalance').innerText = user.balance.toFixed(2) + " USDT";
+            document.getElementById('recordRecharge').innerText = "+" + user.recharge.toFixed(2) + " USDT";
+            document.getElementById('recordProfit').innerText = user.profit.toFixed(2) + " USDT";
 
             document.getElementById('refLinkInput').value = user.refLink;
-            document.getElementById('refCodeInput').value = user.refCode || '';
+            document.getElementById('refCodeInput').value = user.refCode;
 
             document.getElementById('profileEmailHeader').innerText = user.email;
             document.getElementById('profileEmailVal').innerText = user.email;
-            document.getElementById('profileVipVal').innerText = "VIP " + (user.vip || 1);
-            document.getElementById('profileBalanceVal').innerText = balance.toFixed(2) + " USDT";
-            document.getElementById('profileProfitVal').innerText = profit.toFixed(2) + " USDT";
-            document.getElementById('profileRechargeVal').innerText = recharge.toFixed(2) + " USDT";
+            document.getElementById('profileVipVal').innerText = "VIP " + user.vip;
+            document.getElementById('profileBalanceVal').innerText = user.balance.toFixed(2) + " USDT";
+            document.getElementById('profileProfitVal').innerText = user.profit.toFixed(2) + " USDT";
+            document.getElementById('profileRechargeVal').innerText = user.recharge.toFixed(2) + " USDT";
 
             for (let i = 1; i <= 7; i++) {
                 const box = document.getElementById('vipBox' + i);
                 if (box) {
-                    if (i === (user.vip || 1)) box.classList.add('active-vip');
+                    if (i === user.vip) box.classList.add('active-vip');
                     else box.classList.remove('active-vip');
                 }
             }
@@ -1004,7 +968,7 @@
             checkQuantTimerState();
         }
 
-        window.switchTab = function(index, btnElem) {
+        function switchTab(index, btnElem) {
             const tabs = document.querySelectorAll('.tab-content');
             tabs.forEach(tab => tab.classList.add('hidden'));
 
@@ -1017,262 +981,240 @@
             const navItems = document.querySelectorAll('.nav-item');
             navItems.forEach(item => item.classList.remove('active'));
             if(btnElem) btnElem.classList.add('active');
-        };
+        }
 
-        window.copyText = function(elementId) {
+        function copyText(elementId) {
             const inputElem = document.getElementById(elementId);
             inputElem.select();
             inputElem.setSelectionRange(0, 99999);
             navigator.clipboard.writeText(inputElem.value);
             alert('تم نسخ النص بنجاح!');
-        };
+        }
 
-        window.openModal = function(id) { document.getElementById(id).style.display = 'flex'; };
-        window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; };
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-        window.selectDepositNetwork = function(net) {
+        function selectDepositNetwork(net) {
             currentSelectedDepNetwork = net;
             closeModal('depositNetworksModal');
             document.getElementById('selectedDepNetwork').innerText = net;
             document.getElementById('depositWalletAddress').value = networkAddresses[net] || '';
             openModal('depositAddressModal');
-        };
+        }
 
-        window.selectWithdrawNetwork = function(net) {
+        function selectWithdrawNetwork(net) {
             currentSelectedWdNetwork = net;
             closeModal('withdrawNetworksModal');
             document.getElementById('selectedWdNetwork').innerText = net;
             document.getElementById('userWalletAddressInput').value = '';
             document.getElementById('withdrawAmount').value = '';
             openModal('withdrawFormModal');
-        };
+        }
 
-        window.submitDeposit = function() {
+        function submitDeposit() {
             const amount = parseFloat(document.getElementById('depositAmount').value);
             if (!amount || amount <= 0) { alert('أدخل مبلغ إيداع صحيح'); return; }
             
-            const depRef = ref(db, 'pending_deposits');
-            push(depRef, {
+            let pendingDeposits = JSON.parse(localStorage.getItem('quant_pending_deposits')) || [];
+            pendingDeposits.push({
+                id: Date.now(),
                 email: currentUserEmail,
                 amount: amount,
-                network: currentSelectedDepNetwork,
-                time: Date.now()
-            }).then(() => {
-                closeModal('depositAddressModal');
-                document.getElementById('depositAmount').value = '';
-                alert(`تم إرسال طلب إيداع ${amount} USDT بنجاح عبر السحاب. في انتظار تأكيد الأدمن.`);
+                network: currentSelectedDepNetwork
             });
-        };
+            localStorage.setItem('quant_pending_deposits', JSON.stringify(pendingDeposits));
+            
+            closeModal('depositAddressModal');
+            document.getElementById('depositAmount').value = '';
+            alert(`تم إرسال طلب إيداع ${amount} USDT بنجاح. في انتظار تأكيد الأدمن.`);
+        }
 
-        window.submitWithdraw = function() {
+        function submitWithdraw() {
             const walletAddress = document.getElementById('userWalletAddressInput').value.trim();
             const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            let usersData = JSON.parse(localStorage.getItem('quant_users')) || users;
+            const user = usersData[currentUserEmail];
 
             if (!walletAddress) { alert('يرجى إدخال عنوان محفظتك للسحب'); return; }
             if (!amount || amount <= 0) { alert('أدخل مبلغ سحب صحيح'); return; }
-            if (amount > currentUserData.balance) { alert('رصيدك غير كافي'); return; }
+            if (amount > user.balance) { alert('رصيدك غير كافي'); return; }
 
-            const cleanKey = sanitizeEmail(currentUserEmail);
-            const userRef = ref(db, 'users/' + cleanKey);
-            const newBal = currentUserData.balance - amount;
+            user.balance -= amount;
+            localStorage.setItem('quant_users', JSON.stringify(usersData));
 
-            update(userRef, { balance: newBal }).then(() => {
-                const wdRef = ref(db, 'pending_withdrawals');
-                push(wdRef, {
-                    email: currentUserEmail,
-                    amount: amount,
-                    network: currentSelectedWdNetwork,
-                    wallet: walletAddress,
-                    time: Date.now()
-                }).then(() => {
-                    closeModal('withdrawFormModal');
-                    alert(`تم تقديم طلب سحب ${amount} USDT بنجاح، بانتظار مراجعة وموافقة الأدمن.`);
-                });
+            let pendingWithdrawals = JSON.parse(localStorage.getItem('quant_pending_withdrawals')) || [];
+            pendingWithdrawals.push({
+                id: Date.now(),
+                email: currentUserEmail,
+                amount: amount,
+                network: currentSelectedWdNetwork,
+                wallet: walletAddress
             });
-        };
+            localStorage.setItem('quant_pending_withdrawals', JSON.stringify(pendingWithdrawals));
 
-        function listenToAdminRealtime() {
-            onValue(ref(db, 'pending_deposits'), (snapshot) => {
-                renderAdminDeposits(snapshot.val());
-            });
-            onValue(ref(db, 'pending_withdrawals'), (snapshot) => {
-                renderAdminWithdrawals(snapshot.val());
-            });
+            showAppScreen();
+            closeModal('withdrawFormModal');
+            alert(`تم تقديم طلب سحب ${amount} USDT بنجاح، بانتظار مراجعة وموافقة الأدمن.`);
         }
 
-        window.openAdminPanel = function() {
-            loadAdminPanelData();
-            openModal('adminPanelModal');
-        };
-
-        window.loadAdminPanelData = function() {
-            get(ref(db, 'pending_deposits')).then(s => renderAdminDeposits(s.val()));
-            get(ref(db, 'pending_withdrawals')).then(s => renderAdminWithdrawals(s.val()));
-        };
-
-        function renderAdminDeposits(data) {
+        function openAdminPanel() {
+            let pendingDeposits = JSON.parse(localStorage.getItem('quant_pending_deposits')) || [];
             const depositsContainer = document.getElementById('adminDepositsList');
-            if(!depositsContainer) return;
             depositsContainer.innerHTML = '';
 
-            if (!data) {
+            if (pendingDeposits.length === 0) {
                 depositsContainer.innerHTML = '<p style="text-align: center; color: var(--text-sec); font-size: 0.75rem; padding: 5px;">لا توجد إيداعات معلقة.</p>';
-                return;
+            } else {
+                pendingDeposits.forEach((dep) => {
+                    depositsContainer.innerHTML += `
+                        <div style="background: #121824; border: 1px solid var(--border); padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--accent);">${dep.email}</div>
+                                <div style="font-size: 0.8rem; font-weight: bold; color: #fff;">${dep.amount} USDT (${dep.network})</div>
+                            </div>
+                            <div style="display: flex; gap: 4px;">
+                                <button class="btn btn-success" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleDeposit(${dep.id}, 'approve')">قبول</button>
+                                <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleDeposit(${dep.id}, 'reject')">رفض</button>
+                            </div>
+                        </div>
+                    `;
+                });
             }
 
-            Object.keys(data).forEach((id) => {
-                const dep = data[id];
-                depositsContainer.innerHTML += `
-                    <div style="background: #121824; border: 1px solid var(--border); padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 0.7rem; color: var(--accent);">${dep.email}</div>
-                            <div style="font-size: 0.8rem; font-weight: bold; color: #fff;">${dep.amount} USDT (${dep.network})</div>
-                        </div>
-                        <div style="display: flex; gap: 4px;">
-                            <button class="btn btn-success" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleDeposit('${id}', '${dep.email}', ${dep.amount}, 'approve')">قبول</button>
-                            <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleDeposit('${id}', '${dep.email}', ${dep.amount}, 'reject')">رفض</button>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function renderAdminWithdrawals(data) {
+            let pendingWithdrawals = JSON.parse(localStorage.getItem('quant_pending_withdrawals')) || [];
             const withdrawalsContainer = document.getElementById('adminWithdrawalsList');
-            if(!withdrawalsContainer) return;
             withdrawalsContainer.innerHTML = '';
 
-            if (!data) {
+            if (pendingWithdrawals.length === 0) {
                 withdrawalsContainer.innerHTML = '<p style="text-align: center; color: var(--text-sec); font-size: 0.75rem; padding: 5px;">لا توجد سحوبات معلقة.</p>';
-                return;
+            } else {
+                pendingWithdrawals.forEach((wd) => {
+                    withdrawalsContainer.innerHTML += `
+                        <div style="background: #121824; border: 1px solid var(--border); padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-size: 0.7rem; color: var(--red);">${wd.email}</div>
+                                <div style="font-size: 0.8rem; font-weight: bold; color: #fff;">${wd.amount} USDT (${wd.network})</div>
+                            </div>
+                            <div style="display: flex; gap: 4px;">
+                                <button class="btn btn-success" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleWithdrawal(${wd.id}, 'approve')">قبول</button>
+                                <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleWithdrawal(${wd.id}, 'reject')">رفض</button>
+                            </div>
+                        </div>
+                    `;
+                });
             }
 
-            Object.keys(data).forEach((id) => {
-                const wd = data[id];
-                withdrawalsContainer.innerHTML += `
-                    <div style="background: #121824; border: 1px solid var(--border); padding: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 0.7rem; color: var(--red);">${wd.email}</div>
-                            <div style="font-size: 0.8rem; font-weight: bold; color: #fff;">${wd.amount} USDT (${wd.network})</div>
-                        </div>
-                        <div style="display: flex; gap: 4px;">
-                            <button class="btn btn-success" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleWithdrawal('${id}', '${wd.email}', ${wd.amount}, 'approve')">قبول</button>
-                            <button class="btn btn-danger" style="padding: 3px 8px; font-size: 0.65rem;" onclick="handleWithdrawal('${id}', '${wd.email}', ${wd.amount}, 'reject')">رفض</button>
-                        </div>
-                    </div>
-                `;
-            });
+            openModal('adminPanelModal');
         }
 
-        window.handleDeposit = function(depId, email, amount, action) {
-            const cleanKey = sanitizeEmail(email);
-            const targetUserRef = ref(db, 'users/' + cleanKey);
+        function handleDeposit(depositId, action) {
+            let pendingDeposits = JSON.parse(localStorage.getItem('quant_pending_deposits')) || [];
+            users = JSON.parse(localStorage.getItem('quant_users')) || users;
+
+            const depIndex = pendingDeposits.findIndex(d => d.id === depositId);
+            if (depIndex === -1) return;
+
+            const dep = pendingDeposits[depIndex];
 
             if (action === 'approve') {
-                get(targetUserRef).then((s) => {
-                    if (s.exists()) {
-                        const u = s.val();
-                        const curBal = Number(u.balance || 0);
-                        const curRec = Number(u.recharge || 0);
-                        let newVip = Number(u.vip || 1);
-
-                        if (amount >= 50 && newVip < 2) {
-                            newVip = 2;
-                        }
-
-                        update(targetUserRef, {
-                            balance: curBal + amount,
-                            recharge: curRec + amount,
-                            vip: newVip
-                        }).then(() => {
-                            remove(ref(db, 'pending_deposits/' + depId));
-                            alert(`تم قبول إيداع ${amount} USDT وترقية الرصيد تلقائياً.`);
-                        });
+                if (users[dep.email]) {
+                    users[dep.email].balance += dep.amount;
+                    users[dep.email].recharge += dep.amount;
+                    
+                    if (dep.amount >= 50 && users[dep.email].vip < 2) {
+                        users[dep.email].vip = 2;
                     }
-                });
+                    localStorage.setItem('quant_users', JSON.stringify(users));
+                }
+                alert(`تم قبول إيداع ${dep.amount} USDT وإضافته لرصيد المستخدم بنجاح.`);
             } else {
-                remove(ref(db, 'pending_deposits/' + depId)).then(() => {
-                    alert(`تم رفض الإيداع.`);
-                });
+                alert(`تم رفض إيداع ${dep.amount} USDT.`);
             }
-        };
 
-        window.handleWithdrawal = function(wdId, email, amount, action) {
-            const cleanKey = sanitizeEmail(email);
-            const targetUserRef = ref(db, 'users/' + cleanKey);
-
-            if (action === 'approve') {
-                remove(ref(db, 'pending_withdrawals/' + wdId)).then(() => {
-                    alert(`تم تأكيد السحب وإرساله للمستخدم.`);
-                });
-            } else {
-                get(targetUserRef).then((s) => {
-                    if (s.exists()) {
-                        const u = s.val();
-                        const curBal = Number(u.balance || 0);
-                        update(targetUserRef, { balance: curBal + amount }).then(() => {
-                            remove(ref(db, 'pending_withdrawals/' + wdId));
-                            alert(`تم رفض السحب وإعادة المبلغ إلى رصيد المستخدم.`);
-                        });
-                    }
-                });
-            }
-        };
-
-        window.upgradeVip = function(tierLevel, cost) {
-            const balance = Number(currentUserData.balance || 0);
+            pendingDeposits.splice(depIndex, 1);
+            localStorage.setItem('quant_pending_deposits', JSON.stringify(pendingDeposits));
             
-            if (tierLevel === 2 && balance < cost) {
-                alert(`يتطلب الانتقال إلى VIP 2 إيداع بقيمة ${cost} USDT وتأكيد الإيداع من قبل الأدمن أولاً.`);
-                return;
+            openAdminPanel();
+            showAppScreen();
+        }
+
+        function handleWithdrawal(withdrawId, action) {
+            let pendingWithdrawals = JSON.parse(localStorage.getItem('quant_pending_withdrawals')) || [];
+            users = JSON.parse(localStorage.getItem('quant_users')) || users;
+
+            const wdIndex = pendingWithdrawals.findIndex(w => w.id === withdrawId);
+            if (wdIndex === -1) return;
+
+            const wd = pendingWithdrawals[wdIndex];
+
+            if (action === 'approve') {
+                alert(`تم تأكيد سحب ${wd.amount} USDT وإرساله لمحفظة المستخدم بنجاح.`);
+            } else {
+                if (users[wd.email]) {
+                    users[wd.email].balance += wd.amount;
+                    localStorage.setItem('quant_users', JSON.stringify(users));
+                }
+                alert(`تم رفض السحب وإعادة المبلغ ${wd.amount} USDT لرصيد المستخدم.`);
             }
 
-            if (balance < cost) {
+            pendingWithdrawals.splice(wdIndex, 1);
+            localStorage.setItem('quant_pending_withdrawals', JSON.stringify(pendingWithdrawals));
+            
+            openAdminPanel();
+            showAppScreen();
+        }
+
+        function upgradeVip(tierLevel, cost) {
+            let usersData = JSON.parse(localStorage.getItem('quant_users')) || users;
+            const user = usersData[currentUserEmail];
+            
+            if (tierLevel === 2) {
+                if (user.balance < cost) {
+                    alert(`يتطلب الانتقال إلى VIP 2 إيداع بقيمة ${cost} USDT وتأكيد الإيداع من قبل الأدمن أولاً.`);
+                    return;
+                }
+            }
+
+            if (user.balance < cost) {
                 alert(`رصيدك الحالي غير كافي للترقية إلى VIP ${tierLevel}. تحتاج إلى ${cost} USDT.`);
                 return;
             }
 
-            const cleanKey = sanitizeEmail(currentUserEmail);
-            const userRef = ref(db, 'users/' + cleanKey);
+            user.balance -= cost;
+            user.vip = tierLevel;
+            localStorage.setItem('quant_users', JSON.stringify(usersData));
 
-            update(userRef, {
-                balance: balance - cost,
-                vip: tierLevel
-            }).then(() => {
-                alert(`تهانينا! تم ترقية حسابك إلى VIP ${tierLevel} بنجاح.`);
-            });
-        };
+            showAppScreen();
+            alert(`تهانينا! تم ترقية حسابك إلى VIP ${tierLevel} بنجاح لصلاحية 30 يوماً.`);
+        }
 
-        window.startQuantitativeTask = function() {
-            const balance = Number(currentUserData.balance || 0);
+        function startQuantitativeTask() {
+            let usersData = JSON.parse(localStorage.getItem('quant_users')) || users;
+            const user = usersData[currentUserEmail];
             const now = new Date().getTime();
 
-            if (balance <= 0) {
-                alert('عذراً، رصيدك الحالي هو 0. يجب عليك إيداع رصيد وتأكيده لبدء جلسة التعدين.');
+            if (user.balance <= 0) {
+                alert('عذراً، رصيدك الحالي هو 0. يجب عليك إيداع رصيد وتأكيده لبدء جلسة التحديد.');
                 return;
             }
 
-            const rate = vipRates[currentUserData.vip || 1] || 0.20;
-            const earnedProfit = balance * rate;
-            const currentProfit = Number(currentUserData.profit || 0);
+            const rate = vipRates[user.vip] || 0.20;
+            const earnedProfit = user.balance * rate;
+            user.profit += earnedProfit;
+            user.lastQuantTime = now;
 
-            const cleanKey = sanitizeEmail(currentUserEmail);
-            const userRef = ref(db, 'users/' + cleanKey);
-
-            update(userRef, {
-                profit: currentProfit + earnedProfit,
-                lastQuantTime: now
-            }).then(() => {
-                alert(`تم إتمام جلسة التعدين لـ VIP ${currentUserData.vip} بنجاح وحقق ربح يومي بقيمة +${earnedProfit.toFixed(2)} USDT!`);
-            });
-        };
+            localStorage.setItem('quant_users', JSON.stringify(usersData));
+            showAppScreen();
+            alert(`تم إتمام جلسة التعدين لـ VIP ${user.vip} بنجاح وحقق ربح يومي بقيمة +${earnedProfit.toFixed(2)} USDT!`);
+        }
 
         function checkQuantTimerState() {
-            if(!currentUserData) return;
+            let usersData = JSON.parse(localStorage.getItem('quant_users')) || users;
+            const user = usersData[currentUserEmail];
+            if(!user) return;
             const now = new Date().getTime();
             const cooldownTime = 24 * 60 * 60 * 1000;
-            const lastTime = Number(currentUserData.lastQuantTime || 0);
-            const elapsed = now - lastTime;
+            const elapsed = now - user.lastQuantTime;
 
             if (elapsed < cooldownTime) {
                 document.getElementById('startQuantBtn').parentElement.classList.add('hidden');
@@ -1282,7 +1224,7 @@
                 
                 timerInterval = setInterval(() => {
                     const currentTime = new Date().getTime();
-                    const timeLeft = cooldownTime - (currentTime - lastTime);
+                    const timeLeft = cooldownTime - (currentTime - user.lastQuantTime);
 
                     if (timeLeft <= 0) {
                         clearInterval(timerInterval);
